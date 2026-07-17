@@ -207,6 +207,7 @@ export function get_dts(file, created, resolve, options) {
 		declarations: new Map(),
 		imports: new Map(),
 		exports: new Map(),
+		type_exports: new Set(),
 		export_from: new Map(),
 		import_all: new Map(),
 		export_all: [],
@@ -299,6 +300,10 @@ export function get_dts(file, created, resolve, options) {
 									external,
 									name: local
 								});
+
+								if (node.isTypeOnly || specifier.isTypeOnly) {
+									module.type_exports.add(name);
+								}
 							});
 						}
 					} else {
@@ -324,6 +329,10 @@ export function get_dts(file, created, resolve, options) {
 								: name;
 
 							module.exports.set(name, local);
+
+							if (node.isTypeOnly || specifier.isTypeOnly) {
+								module.type_exports.add(name);
+							}
 						});
 					}
 				}
@@ -352,6 +361,7 @@ export function get_dts(file, created, resolve, options) {
 					module: file,
 					name,
 					alias: '',
+					kind: node.kind,
 					export: false,
 					default: false,
 					included: false,
@@ -604,6 +614,16 @@ export function is_property(node) {
 	if (ts.isGetAccessorDeclaration(node)) return true;
 	if (ts.isSetAccessorDeclaration(node)) return true;
 	return false;
+}
+
+/**
+ * @param {string} name
+ * @param {Declaration} declaration
+ */
+export function is_alias_for(name, declaration) {
+	if (declaration.kind !== ts.SyntaxKind.TypeAliasDeclaration) return false;
+	if (declaration.dependencies.length !== 1) return false;
+	return declaration.dependencies[0].name === name;
 }
 
 /**

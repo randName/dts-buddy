@@ -10,6 +10,7 @@ import {
 	is_internal,
 	is_property,
 	is_reference,
+	is_alias_for,
 	resolve_dts,
 	walk
 } from './utils.js';
@@ -64,6 +65,9 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 	/** @type {string[]} */
 	const export_specifiers = [];
+
+	/** @type {{ name: string, decl: Declaration }[]} */
+	const type_export_specifiers = [];
 
 	// step 1 — discover which modules are included in the bundle
 	{
@@ -202,11 +206,29 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			}
 		};
 
+		const entry_type_exports = bundle.get(entry)?.type_exports;
+
 		for (const name of exports) {
 			const declaration = trace_export(entry, name);
 			if (declaration) {
+				// trace underlying declaration if aliased with the same name
+				if (is_alias_for(name, declaration)) {
+					const decl = trace(declaration.dependencies[0].module, name);
+					if (decl && !decl.external) {
+						decl.alias ||= get_name(name);
+						mark(decl);
+						type_export_specifiers.push({ name, decl });
+						continue;
+					}
+				}
+
 				declaration.alias = get_name(reserved.has(name) ? declaration.name : name);
 				mark(declaration);
+
+				if (!declaration.external && entry_type_exports?.has(name)) {
+					type_export_specifiers.push({ name, decl: declaration });
+					continue;
+				}
 
 				if (name === 'default') {
 					declaration.default = true;
@@ -455,6 +477,14 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			if (mod) content += '\n' + mod;
 		}
 
+		// export type { ... }
+		if (type_export_specifiers.length > 0) {
+			const type_names = type_export_specifiers.map(({ decl, name }) => {
+				return decl.alias === name ? name : `${decl.alias} as ${name}`;
+			});
+			content += `\n\n\texport type { ${type_names.join(', ')} };`;
+		}
+
 		// finally, export any bindings that are exported from external modules
 
 		for (const name of exports) {
@@ -566,6 +596,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				default: false,
 				name,
 				alias: name,
+				kind: ts.SyntaxKind.Unknown,
 				dependencies: [],
 				preferred_alias: ''
 			};
@@ -591,6 +622,7 @@ function create_external_declaration(binding, alias) {
 		module: binding.id,
 		name: binding.name,
 		alias: '',
+		kind: ts.SyntaxKind.Unknown,
 		export: false,
 		default: false,
 		external: true,
