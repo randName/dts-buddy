@@ -253,6 +253,10 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				add_bundled_export(declaration);
 			}
 		}
+
+		for (const { decl } of type_export_specifiers) {
+			add_bundled_export(decl);
+		}
 	}
 
 	// step 3 - generate code
