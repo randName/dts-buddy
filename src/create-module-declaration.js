@@ -6,6 +6,7 @@ import MagicString from 'magic-string';
 import {
 	clean_jsdoc,
 	get_dts,
+	get_jsdoc,
 	is_declaration,
 	is_internal,
 	is_property,
@@ -300,6 +301,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		// second pass — editing
 		for (const module of bundle.values()) {
 			const result = new MagicString(module.dts);
+			const src_jsdoc = build_source_jsdoc_map(module.source);
 
 			const index = module.dts.indexOf('//# sourceMappingURL=');
 			if (index !== -1) result.remove(index, module.dts.length);
@@ -357,6 +359,11 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				);
 
 				const name = identifier.getText(module.ast);
+
+				if (options.stripInternal && src_jsdoc.internal.has(name)) {
+					result.remove(node.pos, node.end);
+					return;
+				}
 
 				const declaration = /** @type {Declaration} */ (module.declarations.get(name));
 
@@ -427,6 +434,14 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 							column: loc.column
 						});
 					}
+				}
+
+				// Inject JSDoc from original source if available
+				const cleaned = src_jsdoc.cleaned.get(name);
+				if (cleaned) {
+					const start = node.getStart();
+					const text = start === 0 ? cleaned + '\n' : cleaned.replace(/^/gm, '\t') + '\n';
+					result.prependLeft(start, text);
 				}
 
 				walk(node, (node) => {
@@ -634,4 +649,46 @@ function create_external_declaration(binding, alias) {
 		dependencies: [],
 		preferred_alias: alias
 	};
+}
+
+/**
+ * @param {Module['source']} source
+ */
+function build_source_jsdoc_map(source) {
+	/** @type {Map<string, string>} */
+	const cleaned = new Map();
+
+	/** @type {Set<string>} */
+	const internal = new Set();
+
+	if (!source) return { cleaned, internal };
+
+	const ms = new MagicString(source.code);
+	const ast = ts.createSourceFile('src', source.code, ts.ScriptTarget.Latest, true);
+
+	ts.forEachChild(ast, (node) => {
+		if (!ts.isVariableStatement(node)) return;
+
+		// only for the first declaration
+		const first = node.declarationList.declarations[0];
+		if (!first.initializer || !ts.isIdentifier(first.name)) return;
+
+		const exp = first.initializer;
+		if (!ts.isArrowFunction(exp) && !ts.isFunctionExpression(exp)) return;
+
+		if (is_internal(node)) {
+			internal.add(first.name.text);
+		}
+
+		const jsdocs = get_jsdoc(node);
+		if (!jsdocs?.length) return;
+
+		clean_jsdoc(node, ms);
+		const clean_src = ms.slice(jsdocs[0].pos, jsdocs[jsdocs.length - 1].end).trimStart();
+		if (clean_src) {
+			cleaned.set(first.name.text, clean_src);
+		}
+	});
+
+	return { cleaned, internal };
 }
