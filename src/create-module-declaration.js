@@ -1,4 +1,4 @@
-/** @import { Binding, Declaration, Mapping, Module, ModuleReference } from './types' */
+/** @import { Binding, Declaration, Mapping, Module, ModuleReference, BundledNames } from './types' */
 import path from 'node:path';
 import ts from 'typescript';
 import * as tsu from 'ts-api-utils';
@@ -19,7 +19,7 @@ import {
  * @param {string} entry
  * @param {Record<string, string>} created
  * @param {(file: string, specifier: string) => string | null} resolve
- * @param {{ stripInternal?: boolean }} options
+ * @param {{ stripInternal?: boolean; bundled?: Map<string, BundledNames> }} options
  * @returns {{
  *   content: string;
  *   mappings: Map<string, Mapping>;
@@ -58,6 +58,9 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 	/** @type {Set<string>} */
 	const reserved = new Set(['default']);
+
+	/** @type {Set<Declaration>} */
+	const redirected = new Set();
 
 	/** @type {string[]} */
 	const export_specifiers = [];
@@ -145,6 +148,9 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		/** @type {Set<Declaration>} */
 		const declarations = new Set();
 
+		/** @type {Set<Declaration>} */
+		const aliased_exports = new Set();
+
 		/** @param {string} name */
 		function get_name(name) {
 			let i = 1;
@@ -159,8 +165,33 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		/**
 		 * @param {Declaration} declaration
 		 */
+		const add_bundled_export = (declaration) => {
+			const existing = options.bundled?.get(declaration.module);
+			if (existing) {
+				existing.names.add(declaration.name);
+			} else {
+				options.bundled?.set(declaration.module, { id, names: new Set([declaration.name]) });
+			}
+		};
+
+		/**
+		 * @param {Declaration} declaration
+		 */
 		const mark = (declaration) => {
 			if (declaration.included) return;
+
+			const bundled = options.bundled?.get(declaration.module);
+			if (bundled?.names.has(declaration.name)) {
+				redirected.add(declaration);
+				declaration.included = true;
+				declaration.alias = get_name(declaration.name);
+				(external_imports[bundled.id] ??= {})[declaration.name] ??= {
+					...declaration,
+					module: bundled.id,
+					preferred_alias: declaration.name
+				};
+				return;
+			}
 
 			declarations.add(declaration);
 			declaration.included = true;
@@ -181,6 +212,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 					declaration.default = true;
 				} else if (declaration.alias !== name) {
 					export_specifiers.push(`${declaration.alias} as ${name}`);
+					aliased_exports.add(declaration);
 				} else {
 					declaration.export = true;
 				}
@@ -193,6 +225,10 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		for (const declaration of declarations) {
 			if (!declaration.alias) {
 				declaration.alias = get_name(declaration.preferred_alias || declaration.name);
+			}
+
+			if (declaration.export || declaration.default || aliased_exports.has(declaration)) {
+				add_bundled_export(declaration);
 			}
 		}
 	}
@@ -298,7 +334,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 				const declaration = /** @type {Declaration} */ (module.declarations.get(name));
 
-				if (!declaration.included) {
+				if (!declaration.included || redirected.has(declaration)) {
 					result.remove(node.pos, node.end);
 					return;
 				}

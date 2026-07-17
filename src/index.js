@@ -192,6 +192,9 @@ export async function createBundle(options) {
 
 		let types = '';
 
+		/** @type {Map<string, import('./types').BundledNames>} */
+		const bundled = new Map();
+
 		/** @type {Map<string, Map<string, import('./types').Mapping>>} */
 		const all_mappings = new Map();
 
@@ -230,7 +233,7 @@ export async function createBundle(options) {
 				modules[id],
 				created,
 				resolve,
-				compilerOptions
+				{ ...compilerOptions, bundled }
 			);
 
 			types += content;

@@ -76,4 +76,9 @@ interface Mapping {
 	column: number;
 }
 
+export interface BundledNames {
+	id: string;
+	names: Set<string>;
+}
+
 export { Binding, Declaration, Mapping, Module, ModuleReference, Namespace };
