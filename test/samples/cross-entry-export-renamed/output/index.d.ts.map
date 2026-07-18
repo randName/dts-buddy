@@ -1,0 +1,17 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"Foo",
+		"takeFoo"
+	],
+	"sources": [
+		"../input/shared/types.ts",
+		"../input/subpkg-b/index.ts"
+	],
+	"sourcesContent": [
+		null,
+		null
+	],
+	"mappings": ";cAAaA,GAAGA;;;;;;;;;;;iBCEAC,OAAOA"
+}

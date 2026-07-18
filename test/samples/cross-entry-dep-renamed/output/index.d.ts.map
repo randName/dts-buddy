@@ -1,0 +1,14 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"makeWidget"
+	],
+	"sources": [
+		"../input/subpkg-b/index.ts"
+	],
+	"sourcesContent": [
+		null
+	],
+	"mappings": ";;;;;;;;;;;iBAEgBA,UAAUA"
+}

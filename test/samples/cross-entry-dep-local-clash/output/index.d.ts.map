@@ -1,0 +1,17 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"Foo",
+		"wrap"
+	],
+	"sources": [
+		"../input/shared/a.ts",
+		"../input/subpkg-b/index.ts"
+	],
+	"sourcesContent": [
+		null,
+		null
+	],
+	"mappings": ";cAAaA,GAAGA;;;;;;;;;;cCEHA,GAAGA;;;;iBAOAC,IAAIA"
+}

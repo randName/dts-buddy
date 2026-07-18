@@ -1,0 +1,17 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"Widget",
+		"wrapWidget"
+	],
+	"sources": [
+		"../input/shared/types.ts",
+		"../input/subpkg-b/index.ts"
+	],
+	"sourcesContent": [
+		null,
+		null
+	],
+	"mappings": ";cAAaA,MAAMA;;;;;;;;;;;iBCIHC,UAAUA"
+}
