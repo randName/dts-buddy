@@ -1,5 +1,5 @@
 export class Foo {
-	x: number
+	x: number;
 
 	constructor(x: number) {
 		this.x = x;

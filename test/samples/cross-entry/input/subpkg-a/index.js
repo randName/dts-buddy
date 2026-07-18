@@ -1,1 +1,1 @@
-export { Foo, makeFoo } from './foo.js'
+export { Foo, makeFoo } from './foo.js';
