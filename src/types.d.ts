@@ -63,6 +63,8 @@ interface Module {
 
 	/** A map of <exported, local> exports */
 	exports: Map<string, string>;
+
+	type_exports: Set<string>;
 }
 
 interface Namespace {

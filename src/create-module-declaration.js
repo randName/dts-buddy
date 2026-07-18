@@ -59,6 +59,9 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 	/** @type {Set<string>} */
 	const reserved = new Set(['default']);
 
+	/** @type {{ name: string, decl: Declaration }[]} */
+	const type_export_specifiers = [];
+
 	/** @type {string[]} */
 	const export_specifiers = [];
 
@@ -68,7 +71,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 	/** @type {Record<string, string[]>} */
 	const internal_imports = {};
 
-	/** @type {Record<string, string[]>} */
+	/** @type {Record<string, { name: string; type?: boolean }[]>} */
 	const internal_exports = {};
 
 	// step 1 — discover which modules are included in the bundle
@@ -192,6 +195,8 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			}
 		};
 
+		const entry_type_exports = bundle.get(entry)?.type_exports;
+
 		for (const name of exports) {
 			const declaration = trace_export(entry, name);
 			if (declaration) {
@@ -201,12 +206,19 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				if (ent) {
 					if (!redirected.has(declaration.key)) redirected.set(declaration.key, null);
 					declaration.included = true;
-					const imp = ent.name === name ? name : `${ent.name} as ${name}`;
-					(internal_exports[ent.id] ??= []).push(imp);
+					(internal_exports[ent.id] ??= []).push({
+						type: entry_type_exports?.has(name),
+						name: ent.name === name ? name : `${ent.name} as ${name}`
+					});
 					continue;
 				}
 
 				mark(declaration);
+
+				if (!declaration.external && entry_type_exports?.has(name)) {
+					type_export_specifiers.push({ name, decl: declaration });
+					continue;
+				}
 
 				if (name === 'default') {
 					declaration.default = true;
@@ -236,6 +248,10 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			if (declaration.export || declaration.default || aliased_exports.has(declaration)) {
 				options.claimExport?.(declaration);
 			}
+		}
+
+		for (const { decl } of type_export_specifiers) {
+			options.claimExport?.(decl);
 		}
 
 		// build internal_imports after all aliases are finalized
@@ -291,7 +307,21 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 		// re-exports from other modules
 		for (const id in internal_exports) {
-			content += `\n\texport { ${internal_exports[id].join(', ')} } from '${id}';`;
+			const specifiers = [];
+			const type_specifiers = [];
+			for (const exp of internal_exports[id]) {
+				if (exp.type) {
+					type_specifiers.push(exp.name);
+				} else {
+					specifiers.push(exp.name);
+				}
+			}
+			if (specifiers.length > 0) {
+				content += `\n\texport { ${specifiers.join(', ')} } from '${id}';`;
+			}
+			if (type_specifiers.length > 0) {
+				content += `\n\texport type { ${type_specifiers.join(', ')} } from '${id}';`;
+			}
 		}
 
 		// second pass — editing
@@ -477,6 +507,14 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				.replace(/^(    )+/gm, (match) => '\t'.repeat(match.length / 4));
 
 			if (mod) content += '\n' + mod;
+		}
+
+		// export type { ... }
+		if (type_export_specifiers.length > 0) {
+			const type_names = type_export_specifiers.map(({ decl, name }) => {
+				return decl.alias === name ? name : `${decl.alias} as ${name}`;
+			});
+			content += `\n\n\texport type { ${type_names.join(', ')} };`;
 		}
 
 		// finally, export any bindings that are exported from external modules
