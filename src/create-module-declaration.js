@@ -19,7 +19,7 @@ import {
  * @param {string} entry
  * @param {Record<string, string>} created
  * @param {(file: string, specifier: string) => string | null} resolve
- * @param {{ stripInternal?: boolean }} options
+ * @param {{ stripInternal?: boolean; getEntry?: (d: Declaration) => { id: string, name: string } | null; claimExport?: (d: Declaration) => void }} options
  * @returns {{
  *   content: string;
  *   mappings: Map<string, Mapping>;
@@ -61,6 +61,15 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 	/** @type {string[]} */
 	const export_specifiers = [];
+
+	/** @type {Map<string, { declaration: Declaration, entry: { id: string, name: string } } | null>} */
+	const redirected = new Map();
+
+	/** @type {Record<string, string[]>} */
+	const internal_imports = {};
+
+	/** @type {Record<string, string[]>} */
+	const internal_exports = {};
 
 	// step 1 — discover which modules are included in the bundle
 	{
@@ -145,6 +154,9 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		/** @type {Set<Declaration>} */
 		const declarations = new Set();
 
+		/** @type {Set<Declaration>} */
+		const aliased_exports = new Set();
+
 		/** @param {string} name */
 		function get_name(name) {
 			let i = 1;
@@ -160,6 +172,15 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		 * @param {Declaration} declaration
 		 */
 		const mark = (declaration) => {
+			const ent = options.getEntry?.(declaration);
+			if (ent) {
+				declaration.included = true;
+				if (!redirected.get(declaration.key)) {
+					redirected.set(declaration.key, { declaration, entry: ent });
+				}
+				return;
+			}
+
 			if (declaration.included) return;
 
 			declarations.add(declaration);
@@ -175,12 +196,23 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			const declaration = trace_export(entry, name);
 			if (declaration) {
 				declaration.alias = get_name(reserved.has(name) ? declaration.name : name);
+
+				const ent = options.getEntry?.(declaration);
+				if (ent) {
+					if (!redirected.has(declaration.key)) redirected.set(declaration.key, null);
+					declaration.included = true;
+					const imp = ent.name === name ? name : `${ent.name} as ${name}`;
+					(internal_exports[ent.id] ??= []).push(imp);
+					continue;
+				}
+
 				mark(declaration);
 
 				if (name === 'default') {
 					declaration.default = true;
 				} else if (declaration.alias !== name) {
 					export_specifiers.push(`${declaration.alias} as ${name}`);
+					aliased_exports.add(declaration);
 				} else {
 					declaration.export = true;
 				}
@@ -189,11 +221,29 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			}
 		}
 
+		// assign aliases to redirected declarations before local ones, so imported names take priority
+		for (const info of redirected.values()) {
+			if (!info || info.declaration.alias) continue;
+			info.declaration.alias = get_name(info.entry.name);
+		}
+
 		// provide a name for declarations that are included but not exported
 		for (const declaration of declarations) {
 			if (!declaration.alias) {
 				declaration.alias = get_name(declaration.preferred_alias || declaration.name);
 			}
+
+			if (declaration.export || declaration.default || aliased_exports.has(declaration)) {
+				options.claimExport?.(declaration);
+			}
+		}
+
+		// build internal_imports after all aliases are finalized
+		for (const info of redirected.values()) {
+			if (!info) continue;
+			const name = info.entry.name;
+			const imp = name === info.declaration.alias ? name : `${name} as ${info.declaration.alias}`;
+			(internal_imports[info.entry.id] ??= []).push(imp);
 		}
 	}
 
@@ -217,6 +267,10 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			}
 		}
 
+		for (const id in internal_imports) {
+			content += `\n\timport type { ${internal_imports[id].join(', ')} } from '${id}';`;
+		}
+
 		for (const id in external_import_alls) {
 			for (const name in external_import_alls[id]) {
 				content += `\n\timport * as ${name} from '${id}';`; // TODO could this have been aliased?
@@ -233,6 +287,11 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			});
 
 			content += `\n\texport { ${specifiers.join(', ')} } from '${id}';`;
+		}
+
+		// re-exports from other modules
+		for (const id in internal_exports) {
+			content += `\n\texport { ${internal_exports[id].join(', ')} } from '${id}';`;
 		}
 
 		// second pass — editing
@@ -299,7 +358,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 				const declaration = /** @type {Declaration} */ (module.declarations.get(name));
 
-				if (!declaration.included) {
+				if (!declaration.included || redirected.has(declaration.key)) {
 					result.remove(node.pos, node.end);
 					return;
 				}
@@ -524,6 +583,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 			// otherwise it's presumably a built-in
 			return {
+				key: name,
 				module: '<builtin>',
 				external: false,
 				included: true,
@@ -553,6 +613,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
  */
 function create_external_declaration(binding, alias) {
 	return {
+		key: `${binding.id}\0${binding.name}`,
 		module: binding.id,
 		name: binding.name,
 		alias: '',

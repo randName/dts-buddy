@@ -8,6 +8,7 @@ interface Reference {
 }
 
 interface Declaration {
+	key: string;
 	module: string;
 	name: string;
 	alias: string;

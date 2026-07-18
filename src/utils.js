@@ -349,6 +349,7 @@ export function get_dts(file, created, resolve, options) {
 			const existing = current.declarations.get(name);
 			if (!existing) {
 				current.declarations.set(name, {
+					key: `${file}\0${name}`,
 					module: file,
 					name,
 					alias: '',
