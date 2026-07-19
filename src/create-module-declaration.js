@@ -286,7 +286,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 					return;
 				}
 
-				if (is_internal(node) && options.stripInternal) {
+				if (options.stripInternal && is_internal(node)) {
 					result.remove(node.pos, node.end);
 					return;
 				}
@@ -298,6 +298,11 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 				);
 
 				const name = identifier.getText(module.ast);
+
+				if (options.stripInternal && src_jsdoc.internal.has(name)) {
+					result.remove(node.pos, node.end);
+					return;
+				}
 
 				const declaration = /** @type {Declaration} */ (module.declarations.get(name));
 
