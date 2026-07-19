@@ -1,0 +1,16 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"$fn",
+		"$store",
+		"$value"
+	],
+	"sources": [
+		"../input/index.js"
+	],
+	"sourcesContent": [
+		null
+	],
+	"mappings": ";iBAEgBA,GAAGA;cAFNC,MAAMA;cACNC,MAAMA"
+}

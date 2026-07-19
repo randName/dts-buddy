@@ -343,7 +343,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 							let l = /** @type {number} */ (a[2]);
 
 							const source_line = module.source.code.split('\n')[l];
-							const regex = new RegExp(`\\b${name}\\b`);
+							const regex = new RegExp(`(?<!\\w)${RegExp.escape(name)}(?!\\w)`);
 							const match = regex.exec(source_line);
 
 							if (match) {
