@@ -6,7 +6,6 @@ declare module 'cross-entry-private' {
 		#private;
 	}
 	export class Bar {
-		static #bar(): number;
 		static bar(): number;
 		
 		constructor(n: number);

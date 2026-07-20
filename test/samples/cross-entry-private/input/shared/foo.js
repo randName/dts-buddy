@@ -13,10 +13,6 @@ export class Foo {
 }
 
 export class Bar {
-	static #bar() {
-		return 0;
-	}
-
 	/** @param {number} n */
 	constructor(n) {
 		this.n = n;
@@ -31,6 +27,6 @@ export class Bar {
 	}
 
 	static bar() {
-		return this.#bar();
+		return 0;
 	}
 }
