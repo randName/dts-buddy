@@ -158,7 +158,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		const declarations = new Set();
 
 		/** @type {Set<Declaration>} */
-		const aliased_exports = new Set();
+		const local_exports = new Set();
 
 		/** @param {string} name */
 		function get_name(name) {
@@ -202,6 +202,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			if (declaration) {
 				declaration.alias = get_name(reserved.has(name) ? declaration.name : name);
 
+				// export from other entrypoint if it exists
 				const ent = options.getEntry?.(declaration);
 				if (ent) {
 					if (!redirected.has(declaration.key)) redirected.set(declaration.key, null);
@@ -215,16 +216,18 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 
 				mark(declaration);
 
-				if (!declaration.external && entry_type_exports?.has(name)) {
-					type_export_specifiers.push({ name, decl: declaration });
-					continue;
+				if (!declaration.external) {
+					local_exports.add(declaration);
+					if (entry_type_exports?.has(name)) {
+						type_export_specifiers.push({ name, decl: declaration });
+						continue;
+					}
 				}
 
 				if (name === 'default') {
 					declaration.default = true;
 				} else if (declaration.alias !== name) {
 					export_specifiers.push(`${declaration.alias} as ${name}`);
-					aliased_exports.add(declaration);
 				} else {
 					declaration.export = true;
 				}
@@ -244,14 +247,10 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			if (!declaration.alias) {
 				declaration.alias = get_name(declaration.preferred_alias || declaration.name);
 			}
-
-			if (declaration.export || declaration.default || aliased_exports.has(declaration)) {
-				options.claimExport?.(declaration);
-			}
 		}
 
-		for (const { decl } of type_export_specifiers) {
-			options.claimExport?.(decl);
+		for (const declaration of local_exports) {
+			options.claimExport?.(declaration);
 		}
 
 		// build internal_imports after all aliases are finalized
@@ -305,7 +304,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			content += `\n\texport { ${specifiers.join(', ')} } from '${id}';`;
 		}
 
-		// re-exports from other modules
+		// re-exports from other entrypoints
 		for (const id in internal_exports) {
 			const specifiers = [];
 			const type_specifiers = [];
@@ -509,7 +508,7 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 			if (mod) content += '\n' + mod;
 		}
 
-		// export type { ... }
+		// type-only exports
 		if (type_export_specifiers.length > 0) {
 			const type_names = type_export_specifiers.map(({ decl, name }) => {
 				return decl.alias === name ? name : `${decl.alias} as ${name}`;
