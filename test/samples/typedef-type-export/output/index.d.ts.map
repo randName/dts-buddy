@@ -1,0 +1,21 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"Foo",
+		"Box",
+		"box",
+		"foo"
+	],
+	"sources": [
+		"../input/default/internal.ts",
+		"../input/generic/internal.js",
+		"../input/internal.js"
+	],
+	"sourcesContent": [
+		null,
+		null,
+		null
+	],
+	"mappings": ";sBAAqBA,GAAGA;;;;;;;;;OCGXC,GAAGA;;;;;;iBAkBHC,GAAGA;;;;;;;;OCrBHF,GAAGA;;;;;iBAQHG,GAAGA"
+}

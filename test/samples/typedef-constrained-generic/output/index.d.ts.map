@@ -1,0 +1,15 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"getId",
+		"Base"
+	],
+	"sources": [
+		"../input/types.js"
+	],
+	"sourcesContent": [
+		null
+	],
+	"mappings": ";iBAUgBA,KAAKA;MATQC,IAAIA"
+}

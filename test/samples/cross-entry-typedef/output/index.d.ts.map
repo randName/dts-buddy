@@ -2,17 +2,20 @@
 	"version": 3,
 	"file": "index.d.ts",
 	"names": [
-		"Foo",
 		"makeFoo",
-		"takeFoo"
+		"Foo",
+		"takeFoo",
+		"useFoo"
 	],
 	"sources": [
 		"../input/subpkg-a/internal.js",
-		"../input/subpkg-b/index.js"
+		"../input/subpkg-b/index.js",
+		"../input/subpkg-c/index.js"
 	],
 	"sourcesContent": [
 		null,
+		null,
 		null
 	],
-	"mappings": ";aAAaA,GAAGA;iBAWAC,OAAOA;;;;;;;;;;;;;;iBCNPC,OAAOA;aAHsBF,GAAGA"
+	"mappings": ";iBAWgBA,OAAOA;OAXVC,GAAGA;;;;;;;;;;;;;;;iBCKAC,OAAOA;;;;;;;;;iBCJPC,MAAMA"
 }

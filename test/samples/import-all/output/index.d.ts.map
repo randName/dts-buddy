@@ -3,18 +3,18 @@
 	"file": "index.d.ts",
 	"names": [
 		"Y",
-		"Z",
-		"Namespace"
+		"Namespace",
+		"Z"
 	],
 	"sources": [
 		"../input/index.ts",
-		"../input/type.ts",
-		"../input/namespace.ts"
+		"../input/namespace.ts",
+		"../input/type.ts"
 	],
 	"sourcesContent": [
 		null,
 		null,
 		null
 	],
-	"mappings": ";aAGYA,CAACA;aCHDC,CAACA;WCAIC,SAASA"
+	"mappings": ";aAGYA,CAACA;WCHIC,SAASA;;;;;MCAdC,CAACA"
 }

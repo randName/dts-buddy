@@ -1,21 +1,30 @@
 declare module 'cross-entry-typedef/subpkg-a' {
-	export type Foo = Foo_1;
-	export function makeFoo(n: number): Foo_1;
-	class Foo_1 {
+	export function makeFoo(n: number): Foo;
+	class Foo {
 		
 		constructor(x: number);
 		
 		x: number;
 	}
 
+	export type { Foo };
+
 	export {};
 }
 
 declare module 'cross-entry-typedef/subpkg-b' {
-	import type { Foo as Foo_1 } from 'cross-entry-typedef/subpkg-a';
+	import type { Foo } from 'cross-entry-typedef/subpkg-a';
 	export { makeFoo } from 'cross-entry-typedef/subpkg-a';
 	export function takeFoo(f: Foo): number;
-	export type Foo = Foo_1;
+
+	export type { Foo };
+
+	export {};
+}
+
+declare module 'cross-entry-typedef/subpkg-c' {
+	import type { Foo } from 'cross-entry-typedef/subpkg-b';
+	export function useFoo(f: Foo): number;
 
 	export {};
 }
