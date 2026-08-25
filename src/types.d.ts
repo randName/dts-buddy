@@ -1,6 +1,6 @@
 import { SourceMapMappings } from '@jridgewell/sourcemap-codec';
 import { Location } from 'locate-character';
-import { SourceFile } from 'typescript';
+import { SourceFile, SyntaxKind } from 'typescript';
 
 interface Reference {
 	module: string;
@@ -12,6 +12,7 @@ interface Declaration {
 	module: string;
 	name: string;
 	alias: string;
+	kind?: SyntaxKind;
 	/**
 	 * Whether this declaration should have an `export` modifier in the output
 	 */

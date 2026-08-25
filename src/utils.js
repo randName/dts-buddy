@@ -362,6 +362,7 @@ export function get_dts(file, created, resolve, options) {
 					module: file,
 					name,
 					alias: '',
+					kind: node.kind,
 					export: false,
 					default: false,
 					included: false,
@@ -614,6 +615,17 @@ export function is_property(node) {
 	if (ts.isGetAccessorDeclaration(node)) return true;
 	if (ts.isSetAccessorDeclaration(node)) return true;
 	return false;
+}
+
+/**
+ * @param {string} name
+ * @param {Declaration} declaration
+ */
+export function is_alias_for(name, declaration) {
+	if (declaration.kind !== ts.SyntaxKind.TypeAliasDeclaration) return null;
+	const deps = declaration.dependencies.filter((d) => d.module !== declaration.module);
+	if (deps.length !== 1) return null;
+	return deps[0].name === name ? deps[0] : null;
 }
 
 /**

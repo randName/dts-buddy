@@ -10,6 +10,7 @@ import {
 	is_internal,
 	is_property,
 	is_reference,
+	is_alias_for,
 	resolve_dts,
 	walk
 } from './utils.js';
@@ -200,6 +201,39 @@ export function create_module_declaration(id, entry, created, resolve, options) 
 		for (const name of exports) {
 			const declaration = trace_export(entry, name);
 			if (declaration) {
+				// resolve underlying declaration if aliased with the same name
+				let decl = declaration;
+				const chain = [];
+				const visited = new Set();
+				while (true) {
+					const d = is_alias_for(name, decl);
+					if (!d || visited.has(decl.key)) break;
+					visited.add(decl.key);
+					const resolved = trace(d.module, d.name);
+					const next = resolved?.key === 'default' ? trace_export(d.module, d.name) : resolved;
+					if (!next || next.external) break;
+					chain.push(decl);
+					decl = next;
+				}
+				if (chain.length) {
+					const is_default = name === 'default';
+					decl.alias ||= get_name(is_default ? decl.name : name);
+					mark(decl);
+					for (const link of chain) {
+						link.included = true;
+						link.alias = decl.alias;
+						redirected.set(link.key, null);
+						traced.get(link.module)?.set(name, decl);
+					}
+					if (is_default) {
+						decl.default = true;
+					} else {
+						local_exports.add(decl);
+						type_export_specifiers.push({ name, decl });
+					}
+					continue;
+				}
+
 				declaration.alias = get_name(reserved.has(name) ? declaration.name : name);
 
 				// export from other entrypoint if it exists
